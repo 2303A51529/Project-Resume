@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Lato:wght@400;700&family=Merriweather:wght@400;700&family=Lora:wght@400;700&family=Montserrat:wght@400;700&family=Nunito+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .nav-link { transition: color 0.3s; position: relative; cursor: pointer; }
+        .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; bottom: -4px; left: 50%; transform: translateX(-50%); background-color: #22d3ee; transition: width 0.3s; }
+        .nav-link:hover::after, .nav-link.active::after { width: 100%; }
+        .nav-link:hover, .nav-link.active { color: #fff; }
+        .form-input { background-color: #1e293b; border: 1px solid #334155; color: #e2e8f0; transition: border-color 0.3s, box-shadow 0.3s; }
+        .form-input:focus { outline: none; border-color: #22d3ee; box-shadow: 0 0 0 2px rgba(34,211,238,0.3); }
+        /* Style date input text color */
+        input[type="date"] { color-scheme: dark; } /* Helps with calendar appearance in dark mode */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8); /* Adjust filter to make calendar icon visible */
+        }
+        /* Icon Position within input (for non-date inputs) */
+        .input-with-icon {
+            position: relative;
+        }
+        .input-with-icon .input-icon {
+            position: absolute;
+            top: 50%;
+            right: 0.75rem; /* Adjust as needed */
+            transform: translateY(-50%);
+            color: #64748b; /* Slate-500 */
+            pointer-events: none; /* Make icon non-interactive */
+        }
+        .input-with-icon .form-input {
+            padding-right: 2.5rem; /* Space for icon */
+        }
+
+        /* Multi-step form */
+        .form-step { display: none; }
+        .form-step.active { display: block; }
+
+        /* Mini Preview */
+        #mini-preview {
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 0.75rem; /* Smaller text */
+            line-height: 1.2;
+            background-color: #f8fafc; /* Light background for contrast */
+            color: #1e293b; /* Dark text */
+            border: 1px solid #334155;
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #334155 #1e293b; /* Firefox */
+        }
+        #mini-preview::-webkit-scrollbar { width: 5px; } /* Chrome/Safari */
+        #mini-preview::-webkit-scrollbar-track { background: #1e293b; } /* Chrome/Safari */
+        #mini-preview::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; border: 1px solid #1e293b; } /* Chrome/Safari */
+        #mini-preview h3 { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.25rem; }
+        #mini-preview p { margin-bottom: 0.5rem; }
+
+
+        /* Resume Preview Styling */
+        #resume-preview-container {
+            max-width: 8.5in;
+            margin: auto;
+        }
+        #resume-preview {
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3), 0 10px 10px -5px rgba(0,0,0,0.2);
+            color: #1f2937;
+            transition: all 0.3s ease-in-out;
+            --accent-color: #0891b2; /* Default Cyan-600 */
+            --font-size-mult: 1.0; /* Multiplier for font size */
+            --line-height: 1.5; /* Line height */
+        }
+        #resume-preview h1 { font-size: calc(2.5rem * var(--font-size-mult)); }
+        #resume-preview h2 { font-size: calc(1.125rem * var(--font-size-mult)); line-height: calc(var(--line-height) * 1.1); }
+        #resume-preview h3 { font-size: calc(1rem * var(--font-size-mult)); line-height: calc(var(--line-height) * 1.0); }
+        #resume-preview p, #resume-preview li { font-size: calc(0.875rem * var(--font-size-mult)); line-height: var(--line-height); }
+        #resume-preview .text-xs { font-size: calc(0.75rem * var(--font-size-mult)); }
+        #resume-preview .text-sm { font-size: calc(0.875rem * var(--font-size-mult)); }
+        #resume-preview .text-md { font-size: calc(0.95rem * var(--font-size-mult)); }
+        #resume-preview .text-lg { font-size: calc(1.0rem * var(--font-size-mult)); }
+
+
+        /* Template Thumbnail Styles */
+        .template-thumbnail {
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: border-color 0.3s, transform 0.3s;
+            overflow: hidden; /* Ensure text doesn't overflow */
+            background-color: #e2e8f0; /* bg color for placeholder */
+        }
+        .template-thumbnail img { display: block; } /* Prevent extra space below img */
+        .template-thumbnail:hover {
+            transform: scale(1.05);
+        }
+        .template-thumbnail.active {
+            border-color: #22d3ee; /* Cyan-400 */
+        }
+
+        /* --- Individual Template Styles --- */
+        #resume-preview .resume-title { color: var(--accent-color); }
+
+        /* Template 1: Default Professional */
+        .template-1 .resume-header { text-align: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; }
+        .template-1 .resume-title { text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Template 2: Modern Two-Column */
+        .template-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
+        .template-2 .resume-main { grid-column: 2 / 3; }
+        .template-2 .resume-sidebar { grid-column: 1 / 2; grid-row: 1 / 4; background-color: #eef2ff; padding: 1.5rem; }
+        .template-2 .resume-header { text-align: left; padding: 1.5rem 0; }
+        .template-2 .resume-header h1 { font-size: calc(2.5rem * var(--font-size-mult)); line-height: 1; }
+        .template-2 .resume-sidebar .resume-title { text-align: left; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.25rem; }
+
+        /* Template 3: Minimalist */
+        .template-3 { font-family: 'Lato', sans-serif; }
+        .template-3 .resume-header { text-align: left; padding-bottom: 1.5rem; border-bottom: 1px solid #d1d5db; margin-bottom: 1.5rem; }
+        .template-3 .resume-header h1 { font-size: calc(2.25rem * var(--font-size-mult)); font-weight: 300; }
+        .template-3 .resume-title { font-weight: 700; border: none; text-transform: none; color: #374151; margin-bottom: 1rem; }
+        .template-3 .section-content { padding-left: 0.5rem; }
+
+        /* Template 4: Corporate */
+        .template-4 .resume-header { background-color: var(--accent-color); color: white; padding: 1.5rem; text-align: center; }
+        .template-4 .resume-header h1, .template-4 .resume-header p { color: white; }
+
+        /* Template 5: Elegant */
+        .template-5 { border-left: 5px solid var(--accent-color); }
+        .template-5 .resume-header { text-align: right; padding: 1rem 0; border-bottom: 1px solid #e5e7eb;}
+        .template-5 .resume-header h1 { margin-bottom: 0; }
+        .template-5 .resume-header p { font-size: calc(0.875rem * var(--font-size-mult)); }
+
+        /* Template 6: Classic */
+        .template-6 { font-family: 'Merriweather', serif; }
+        .template-6 .resume-header { text-align: center; }
+        .template-6 .resume-header h1 { font-weight: 700; }
+        .template-6 .resume-title { font-style: italic; border-bottom: 1px dotted var(--accent-color); }
+
+        /* Template 7: Simple */
+        .template-7 .resume-header { text-align: center; padding-bottom: 1rem; }
+        .template-7 .resume-header h1 { display: inline-block; padding: 0.5rem 1rem; border: 2px solid #374151; }
+        .template-7 .section-content { border-left: 2px solid #e5e7eb; padding-left: 1rem; }
+
+        /* Template 8: Bold */
+        .template-8 .resume-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid var(--accent-color); padding-bottom: 1rem; }
+        .template-8 .resume-header h1 { font-size: calc(2.8rem * var(--font-size-mult)); line-height: 1; margin: 0; }
+        .template-8 .resume-header p { text-align: right; font-size: calc(0.8rem * var(--font-size-mult)); line-height: 1.4; margin: 0; }
+        .template-8 .resume-title { text-align: right; text-transform: uppercase; }
+
+        /* Template 9: Dark Header */
+        .template-9 { background-color: #1f2937; color: #e5e7eb; }
+        .template-9 .resume-header { background-color: #f9fafb; color: #1f2937; padding: 2rem; text-align: center; }
+        .template-9 .resume-header h1, .template-9 .resume-header p { color: #1f2937; }
+        .template-9 .text-slate-800, .template-9 .text-slate-700, .template-9 .text-slate-600 { color: #e5e7eb; }
+        .template-9 .resume-title { color: white; border-bottom: 1px solid var(--accent-color); }
+
+        /* Template 10: Creative */
+        .template-10 { font-family: 'Roboto', sans-serif; }
+        .template-10 .resume-header { border-bottom: 1px solid #d1d5db; padding-bottom: 1rem; }
+        .template-10 .resume-title { background-color: var(--accent-color); color: white; padding: 0.25rem 0.5rem; display: inline-block; margin-bottom: 0.5rem; font-size: calc(0.875rem * var(--font-size-mult)); }
+
+        /* FAQ Accordion */
+        .faq-question svg { transition: transform 0.3s; }
+        .faq-answer { transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out; max-height: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; }
+
+        /* Feedback Modal */
+        #feedback-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .feedback-star {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .feedback-star:hover, .feedback-star.active {
+            color: #facc15; /* Yellow-400 */
+        }
+        
+        /* --- START: AI RATING CIRCLE --- */
+        .rating-display {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 1.5rem auto;
+            position: relative;
+        }
+
+        .circular-progress {
+            height: 100%;
+            width: 100%;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Conic gradient: cyan for score, slate-700 for empty */
+            background: conic-gradient(
+                #22d3ee 0deg,
+                #334155 0deg 
+            );
+            transition: background 1.5s ease;
+        }
+
+        .progress-value {
+            position: relative;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #22d3ee; /* Cyan-400 */
+        }
+        
+        .progress-value::after {
+            content: '%';
+            font-size: 1.5rem;
+            position: absolute;
+            top: 10px;
+        }
+
+        /* This is the inner circle cutout, matching the card bg */
+        .circular-progress::before {
+            content: "";
+            position: absolute;
+            height: 170px; /* Slightly smaller than parent */
+            width: 170px;  /* Slightly smaller than parent */
+            background-color: #1e293b; /* Slate-800 bg */
+            border-radius: 50%;
+        }
+        /* --- END: AI RATING CIRCLE --- */
+        
+        /* --- START: NEW Profile Dropdown --- */
+        .dropdown-panel {
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+        }
+        .dropdown-panel.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+        }
+        /* --- END: NEW Profile Dropdown --- */
+    </style>
+</head>
+<body>
+    <header id="header" class="bg-slate-900/80 backdrop-blur-lg sticky top-0 left-0 right-0 z-50 border-b border-slate-800">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">AI Resume <span class="text-cyan-400">Builder</span></h1>
+            <nav class="hidden md:flex items-center space-x-8">
+                <a onclick="showPage('home')" class="nav-link text-slate-300 font-medium">Home</a>
+                <a onclick="showPage('details')" class="nav-link text-slate-300 font-medium">Details</a>
+                <a onclick="showPage('review')" class="nav-link text-slate-300 font-medium">Review</a>
+                <a onclick="showPage('about')" class="nav-link text-slate-300 font-medium">About</a>
+                </nav>
+            
+            <div class="flex items-center space-x-4">
+                <button id="get-started-btn" onclick="ctaButtonClick()" class="bg-cyan-500 text-slate-900 font-bold py-2 px-5 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors">Login / Get Started</button>
+            
+                <div id="profile-menu-container" class="relative hidden md:block">
+                    <button id="profile-icon-btn" class="hidden w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center text-white font-semibold hover:bg-cyan-500 transition-colors">
+                        <span id="profile-initials">G</span> </button>
+                    <div id="profile-dropdown" class="dropdown-panel hidden absolute right-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50">
+                        <div class="p-4 border-b border-slate-700">
+                            <p id="dropdown-user-name" class="font-semibold text-white">Guest User</p>
+                            <p id="dropdown-user-email" class="text-sm text-slate-400">guest@example.com</p>
+                        </div>
+                        <div class="p-2">
+                            <a onclick="showPage('profile'); closeProfileDropdown();" class="block w-full text-left px-3 py-2 rounded-md text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer">Account Settings</a>
+                            <p class="px-3 py-2 text-xs text-slate-500">Status: <span id="dropdown-user-status" class="text-green-400">Active</span></p>
+                        </div>
+                        <div class="p-2 border-t border-slate-700">
+                            <button id="dropdown-logout-btn" class="block w-full text-left px-3 py-2 rounded-md text-red-400 hover:bg-red-500 hover:text-white transition-colors">Logout</button>
+                        </div>
+                    </div>
+                </div>
+                <button id="mobile-menu-button" class="md:hidden text-slate-300 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+            </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4 border-t border-slate-800">
+             <a onclick="showPage('home'); closeMobileMenu();" class="block py-2 text-slate-300 hover:text-white">Home</a>
+             <a onclick="showPage('details'); closeMobileMenu();" class="block py-2 text-slate-300 hover:text-white">Details</a>
+             <a onclick="showPage('review'); closeMobileMenu();" class="block py-2 text-slate-300 hover:text-white">Review</a>
+             <a onclick="showPage('about'); closeMobileMenu();" class="block py-2 text-slate-300 hover:text-white">About</a>
+             <button id="mobile-logout-btn" class="hidden w-full text-left py-2 text-red-400 hover:text-red-300">Logout</button>
+             </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 md:px-8 py-8">
+        
+        <div id="home" class="page">
+            <section class="text-center pt-16 pb-24">
+                <h2 class="text-5xl md:text-7xl font-bold leading-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-cyan-400">Build Your Future, Faster.</h2>
+                <p class="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">Create a professional, ATS-friendly resume in minutes. Our AI helps you highlight your skills and experience to land your dream job.</p>
+                <button id="home-get-started-btn" onclick="ctaButtonClick()" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:scale-105 transition-transform">Get Started Now</button>
+            </section>
+
+            <section class="py-16">
+                <h3 class="text-3xl font-bold text-center mb-12 text-white">How It Works in 3 Simple Steps</h3>
+                <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-center">
+                    <div class="step-card bg-slate-800 border border-slate-700 p-6 md:p-8 rounded-lg cursor-pointer transition-all duration-300 hover:border-cyan-400 hover:scale-105" onclick="ctaButtonClick()"><div class="flex items-center justify-center mb-4 bg-slate-700 rounded-full h-16 w-16 mx-auto"><svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div><h4 class="text-xl font-semibold mb-2 text-white">1. Fill In Your Details</h4><p class="text-slate-400">Quickly enter your info into our guided multi-step form.</p></div>
+                    <div class="step-card bg-slate-800 border border-slate-700 p-6 md:p-8 rounded-lg cursor-pointer transition-all duration-300 hover:border-cyan-400 hover:scale-105" onclick="ctaButtonClick()"><div class="flex items-center justify-center mb-4 bg-slate-700 rounded-full h-16 w-16 mx-auto"><svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg></div><h4 class="text-xl font-semibold mb-2 text-white">2. Generate with AI</h4><p class="text-slate-400">Use AI assist for summaries and preview your resume live.</p></div>
+                    <div class="step-card bg-slate-800 border border-slate-700 p-6 md:p-8 rounded-lg cursor-pointer transition-all duration-300 hover:border-cyan-400 hover:scale-105" onclick="showPage('review')"><div class="flex items-center justify-center mb-4 bg-slate-700 rounded-full h-16 w-16 mx-auto"><svg class="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></div><h4 class="text-xl font-semibold mb-2 text-white">3. Customize & Download</h4><p class="text-slate-400">Choose templates, customize styles, and download PDF/JSON.</p></div>
+                </div>
+            </section>
+            <section class="py-16">
+                <h3 class="text-3xl font-bold text-center mb-12 text-white">Unlock Your Potential with Powerful Features</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">AI-Powered Writing</h4><p class="text-slate-400">Generate impactful summaries and job descriptions instantly.</p></div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">Professional Templates</h4><p class="text-slate-400">Choose from a variety of modern, recruiter-approved designs.</p></div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">Easy Editing & Autosave</h4><p class="text-slate-400">Our simple interface makes updating easy. Progress saved automatically!</p></div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">Instant PDF & JSON</h4><p class="text-slate-400">Get a high-quality PDF or export your data as JSON.</p></div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944a12.02 12.02 0 009 3c4.524 0 8.36-2.433 9.943-6.056a11.956 11.956 0 00-2.325-7.984z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">ATS Optimized</h4><p class="text-slate-400">Create resumes formatted to pass through applicant tracking systems.</p></div>
+                    <div class="bg-slate-800/50 p-6 rounded-lg text-center"><svg class="w-12 h-12 text-cyan-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg><h4 class="text-xl font-semibold mb-2 text-white">Live Mini-Preview</h4><p class="text-slate-400">See your resume take shape instantly as you type.</p></div>
+                </div>
+            </section>
+            <section class="py-16"><h3 class="text-3xl font-bold text-center mb-12 text-white">Choose Your Professional Style</h3><div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto"><div class="bg-slate-800 border border-slate-700 p-4 rounded-lg"><img src="https://placehold.co/600x800/e2e8f0/0f172a?text=Modern+Template" alt="Modern Resume Template" class="rounded-md w-full h-auto"></div><div class="bg-slate-800 border border-slate-700 p-4 rounded-lg transform md:scale-110 shadow-2xl shadow-cyan-500/10"><img src="https://placehold.co/600x800/e2e8f0/0f172a?text=Creative+Design" alt="Creative Resume Template" class="rounded-md w-full h-auto"></div><div class="bg-slate-800 border border-slate-700 p-4 rounded-lg"><img src="https://placehold.co/600x800/e2e8f0/0f172a?text=Classic+Format" alt="Classic Resume Template" class="rounded-md w-full h-auto"></div></div></section>
+            <section class="py-16"><h3 class="text-3xl font-bold text-center mb-12 text-white">Frequently Asked Questions</h3><div class="max-w-3xl mx-auto space-y-4" id="faq-container"><div class="bg-slate-800 border border-slate-700 rounded-lg"><div class="faq-question flex justify-between items-center p-6 cursor-pointer"><h4 class="text-lg font-semibold text-white">Is the AI Resume Builder free to use?</h4><svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div><div class="faq-answer px-6"><p class="text-slate-400 pb-4">Yes, our core features, including resume creation with multiple templates and PDF download, are free. We plan to keep essential functionality accessible.</p></div></div><div class="bg-slate-800 border border-slate-700 rounded-lg"><div class="faq-question flex justify-between items-center p-6 cursor-pointer"><h4 class="text-lg font-semibold text-white">How does the AI summary generator work?</h4><svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div><div class="faq-answer px-6"><p class="text-slate-400 pb-4">Our AI analyzes the job titles, experience highlights, and key skills you provide to generate a concise and professional summary tailored to common industry expectations for similar roles.</p></div></div><div class="bg-slate-800 border border-slate-700 rounded-lg"><div class="faq-question flex justify-between items-center p-6 cursor-pointer"><h4 class="text-lg font-semibold text-white">Is my data saved automatically?</h4><svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div><div class="faq-answer px-6"><p class="text-slate-400 pb-4">Yes, your progress on the 'Details' page is automatically saved to your browser's local storage. This means you can close the tab or refresh the page and your information should still be there when you return using the same browser.</p></div></div></div></section>
+            <section class="py-16 text-center"><h3 class="text-4xl font-bold mb-4 text-white">Ready to Land Your Dream Job?</h3><p class="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">Start building a resume that opens doors. It's fast, easy, and effective.</p><button id="home-create-btn" onclick="ctaButtonClick()" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold py-4 px-10 rounded-lg shadow-lg hover:scale-105 transition-transform text-lg">Create My Resume Now</button></section>
+        </div>
+
+        <div id="login" class="page">
+            <section class="max-w-md mx-auto pt-16">
+                <div class="bg-slate-800 border border-slate-700 p-8 rounded-lg shadow-lg">
+                    <h2 class="text-3xl font-bold text-center mb-6 text-white">Login</h2>
+                    <form id="login-form" class="space-y-6">
+                        <div>
+                            <label for="login-email" class="block mb-2 text-sm font-medium text-slate-300">Email Address</label>
+                            <input type="email" id="login-email" name="email" placeholder="you@example.com" class="p-3 rounded w-full form-input" required>
+                        </div>
+                        <div>
+                            <label for="login-password" class="block mb-2 text-sm font-medium text-slate-300">Password</label>
+                            <input type="password" id="login-password" name="password" placeholder="••••••••" class="p-3 rounded w-full form-input" required>
+                        </div>
+                        <button type="submit" class="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors">Login</button>
+                    </form>
+                    <div class="relative my-6">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-slate-600"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-slate-800 text-slate-400">or</span>
+                        </div>
+                    </div>
+                    <button type="button" class="w-full bg-white text-slate-700 font-medium py-3 px-5 rounded-lg shadow-lg hover:bg-slate-200 transition-colors flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 48 48"><path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"></path></svg>
+                        Login with Google
+                    </button>
+                    <p class="text-center text-slate-400 text-sm mt-6">
+                        Don't have an account? <a href="#" onclick="alert('Sign up is not implemented in this demo. Please use any email/password to login.')" class="text-cyan-400 hover:underline">Sign Up</a>
+                    </p>
+                </div>
+            </section>
+        </div>
+
+        <div id="profile" class="page">
+             <section class="max-w-md mx-auto pt-16">
+                <div class="bg-slate-800 border border-slate-700 p-8 rounded-lg shadow-lg text-center">
+                    <h2 id="profile-welcome" class="text-3xl font-bold mb-6 text-white">Welcome!</h2>
+                    <p class="text-slate-400 mb-8">You are logged in. You can now access the resume builder or log out.</p>
+                    <div class="space-y-4">
+                         <button onclick="showPage('details')" class="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors">Go to Resume Builder</button>
+                         <button id="logout-btn" class="w-full bg-slate-600 text-white font-medium py-3 px-5 rounded-lg hover:bg-slate-500 transition-colors">Logout</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="details" class="page">
+             <section>
+                <h2 class="text-3xl font-bold text-center mb-4">Build Your Resume Step-by-Step</h2>
+                <p class="text-center text-slate-400 mb-8">Complete each section. Your progress is saved automatically!</p>
+
+                <div class="max-w-xl mx-auto mb-8">
+                    <div class="flex justify-between text-sm text-slate-400 mb-1">
+                        <span>Step <span id="current-step-display">1</span> of <span id="total-steps-display">6</span></span>
+                        <span id="progress-percentage">0% Complete</span>
+                    </div>
+                    <div class="bg-slate-700 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-cyan-400 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <form id="resume-form" class="space-y-8 md:col-span-2">
+
+                        <div id="step-1" class="form-step active">
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 1: Personal Details</h3>
+                                
+                                <div class="text-center">
+                                    <img id="photo-preview" src="https://placehold.co/150x150/e2e8f0/334155?text=Upload+Photo" alt="Profile Photo Preview" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-2 border-slate-600">
+                                    <label for="photo" class="cursor-pointer bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">
+                                        Upload Profile Photo
+                                    </label>
+                                    <input type="file" id="photo" name="photo" class="hidden" accept="image/png, image/jpeg">
+                                    <p class="text-xs text-slate-400 mt-2">Optional. Recommended: Square image (JPG, PNG).</p>
+                                </div>
+                            </div>
+                            <div class="grid sm:grid-cols-2 gap-6 mt-8">
+                                <input type="text" id="fullName" name="fullName" placeholder="Full Name" class="p-3 rounded w-full form-input">
+                                <input type="email" id="email" name="email" placeholder="Email Address" class="p-3 rounded w-full form-input">
+                                <input type="tel" id="phone" name="phone" placeholder="Phone Number" class="p-3 rounded w-full form-input">
+                                <input type="text" id="address" name="address" placeholder="City, Country" class="p-3 rounded w-full form-input">
+                                <input type="url" id="linkedin" name="linkedin" placeholder="LinkedIn Profile URL" class="p-3 rounded w-full form-input">
+                                <input type="url" id="github" name="github" placeholder="GitHub Profile URL" class="p-3 rounded w-full form-input">
+                            </div>
+                        </div>
+
+                        <div id="step-2" class="form-step">
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 2: Professional Summary</h3>
+                                <p class="text-slate-400 text-sm mb-4">Write a brief summary or objective. Use the AI generator (after adding experience/skills) for help!</p>
+                                <button type="button" onclick="generateAISummary()" class="bg-cyan-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-cyan-500 transition-colors mb-4">Generate with AI</button>
+                                <textarea id="summary" name="summary" placeholder="e.g., Results-driven software engineer..." class="p-3 rounded w-full h-40 form-input"></textarea>
+                            </div>
+                        </div>
+
+                        <div id="step-3" class="form-step">
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 3: Work Experience</h3>
+                                <div id="experience-container" class="space-y-6">
+                                    </div>
+                                <button type="button" id="add-experience-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Experience</button>
+                            </div>
+                        </div>
+
+                        <div id="step-4" class="form-step">
+                           <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 4: Education</h3>
+                                <div id="education-container" class="space-y-6">
+                                    </div>
+                                <button type="button" id="add-education-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Education</button>
+                            </div>
+                        </div>
+
+                        <div id="step-5" class="form-step">
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg mb-8">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 5a: Skills</h3>
+                                <div id="skills-container" class="space-y-4">
+                                    </div>
+                                <button type="button" id="add-skill-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Skill</button>
+                            </div>
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                               <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 5b: Projects</h3>
+                               <div id="projects-container" class="space-y-6">
+                                    </div>
+                               <button type="button" id="add-project-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Project</button>
+                           </div>
+                        </div>
+
+                        <div id="step-6" class="form-step">
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg mb-8">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 6a: Languages</h3>
+                                <div id="languages-container" class="space-y-4">
+                                    </div>
+                                <button type="button" id="add-language-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Language</button>
+                            </div>
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg mb-8">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 6b: Awards & Honors</h3>
+                                <div id="awards-container" class="space-y-4">
+                                    </div>
+                                <button type="button" id="add-award-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Award</button>
+                            </div>
+                            <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg">
+                                <h3 class="text-xl font-semibold mb-6 border-b border-slate-600 pb-2 text-cyan-400">Step 6c: Volunteer Experience</h3>
+                                <div id="volunteer-container" class="space-y-6">
+                                    </div>
+                                <button type="button" id="add-volunteer-btn" class="mt-4 bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors text-sm">+ Add Volunteer Role</button>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between pt-4">
+                            <button type="button" id="prev-step-btn" onclick="prevStep()" class="bg-slate-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
+                            <button type="button" id="next-step-btn" onclick="nextStep()" class="bg-cyan-500 text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-cyan-400 transition-colors">Next</button>
+                            <button type="button" id="finish-btn" onclick="generateResume()" class="bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-2 px-8 rounded-lg shadow-lg hover:scale-105 transition-transform hidden">Generate & Review Resume</button>
+                        </div>
+                    </form>
+
+                    <div class="md:col-span-1 space-y-6">
+                        <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-lg sticky top-24">
+                            <h3 class="text-lg font-semibold mb-3 text-cyan-400">Live Mini-Preview</h3>
+                            <div id="mini-preview" class="p-3 rounded bg-white">
+                                <p class="text-slate-500 text-xs">Fill in details to see a live preview...</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-lg">
+                           <h3 class="text-lg font-semibold mb-3 text-cyan-400">Data Options</h3>
+                           <div class="space-y-3">
+                                <button type="button" onclick="exportData()" class="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-500 transition-colors text-sm">Export Data (JSON)</button>
+                                <div>
+                                    <label for="import-file" class="w-full bg-emerald-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-emerald-500 transition-colors text-sm cursor-pointer block text-center">Import Data (JSON)</label>
+                                    <input type="file" id="import-file" accept=".json" class="hidden" onchange="importData(event)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="review" class="page">
+             <section>
+                <h2 class="text-3xl font-bold text-center mb-2">Finalize Your Resume</h2>
+                <p class="text-center text-slate-400 mb-8">Select a template and customize the look and feel.</p>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-cyan-400">1. Choose a Template</h3>
+                    <div id="template-selector" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-4">
+                        </div>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-cyan-400">2. Customize Your Style</h3>
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                        <div>
+                            <label for="accent-color" class="block mb-2 text-sm font-medium text-slate-300">Accent Color</label>
+                            <input type="color" id="accent-color" value="#0891b2" onchange="changeAccentColor(this.value)" class="p-1 h-10 w-14 block bg-slate-700 border border-slate-600 cursor-pointer rounded-lg">
+                        </div>
+                        <div>
+                            <label for="font-selector" class="block mb-2 text-sm font-medium text-slate-300">Font Style</label>
+                            <select id="font-selector" onchange="changeFont(this.value)" class="form-input p-2 rounded-lg w-full">
+                                <option value="'Inter', sans-serif">Inter (Modern)</option>
+                                <option value="'Roboto', sans-serif">Roboto (Clean)</option>
+                                <option value="'Lato', sans-serif">Lato (Elegant)</option>
+                                <option value="'Merriweather', serif">Merriweather (Serif)</option>
+                                <option value="'Lora', serif">Lora (Classic Serif)</option>
+                                <option value="'Montserrat', sans-serif">Montserrat (Stylish)</option>
+                                <option value="'Nunito Sans', sans-serif">Nunito Sans (Rounded)</option>
+                            </select>
+                        </div>
+                       <div>
+                            <label for="font-size-slider" class="block mb-2 text-sm font-medium text-slate-300">Font Size: <span id="font-size-value">100%</span></label>
+                            <input type="range" id="font-size-slider" min="0.8" max="1.2" step="0.05" value="1.0" oninput="changeFontSize(this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div>
+                            <label for="line-height-slider" class="block mb-2 text-sm font-medium text-slate-300">Line Height: <span id="line-height-value">1.5</span></label>
+                            <input type="range" id="line-height-slider" min="1.2" max="2.0" step="0.1" value="1.5" oninput="changeLineHeight(this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label for="paper-size-selector" class="block mb-2 text-sm font-medium text-slate-300">Paper Size (PDF)</label>
+                            <select id="paper-size-selector" class="form-input p-2 rounded-lg w-full">
+                                <option value="letter">Letter (8.5 x 11 in)</option>
+                                <option value="a4">A4 (210 x 297 mm)</option>
+                            </select>
+                        </div>
+                        <div class="lg:col-span-2 flex items-end space-x-4">
+                           <button onclick="showPage('details')" class="w-full bg-slate-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-slate-500 transition-colors">Edit Details</button>
+                           <button id="download-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-blue-500 transition-colors">Download PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
+                    <h3 class="text-xl font-semibold mb-6 text-cyan-400">3. Artificial Rating</h3>
+                    <div class="max-w-xs mx-auto text-center">
+                        <p class="text-slate-400 mb-6">Click the button to get an AI-generated score for your resume's content and formatting.</p>
+                        
+                        <div class="rating-display">
+                            <div class="circular-progress" id="progress-circle">
+                                <span class="progress-value" id="progress-value">0</span>
+                            </div>
+                        </div>
+                        
+                        <button class="bg-cyan-500 text-slate-900 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors w-full" id="rate-button">
+                            Rate My Resume
+                        </button>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold mb-4 text-center text-cyan-400">4. Live Preview</h3>
+    
+                <div id="resume-preview-container">
+                    <div id="resume-preview" class="bg-white p-8 template-1">
+                        <p class="text-center text-slate-500">Resume preview will appear here once generated.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div id="about" class="page">
+            <section class="max-w-4xl mx-auto">
+                <div class="text-center"><h2 class="text-3xl font-bold mb-4 text-white">About AI Resume <span class="text-cyan-400">Builder</span></h2><p class="text-lg text-slate-400 mb-8">Our mission is to empower job seekers by providing a smart, intuitive, and efficient tool to create professional resumes that stand out.</p></div>
+                <div class="grid md:grid-cols-2 gap-8"><div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg"><h3 class="text-xl font-semibold mb-2 text-cyan-400">What We Do</h3><p class="text-slate-300">The AI Resume Builder simplifies the resume-writing process. You provide your details through our guided steps, and our intelligent system helps you structure, phrase, and format your information into a clean, professional document ready for any job application. Your progress is saved automatically!</p></div><div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg"><h3 class="text-xl font-semibold mb-2 text-cyan-400">Why It's Useful</h3><p class="text-slate-300">Creating a great resume can be challenging. We eliminate the guesswork with AI-powered suggestions, live previews, professional templates, customization options, and an easy-to-use interface, helping you make the best first impression on potential employers.</p></div></div>
+                
+                        <div class="pt-16">
+                        <div class="text-center">
+                            <h3 class="text-3xl font-bold text-center mb-4 text-white">Meet the Team</h3>
+                            <p class="text-lg text-slate-400 mb-12">Directed by Sridhar Sir</p>
+                        </div>
+                        <div class="grid md:grid-cols-3 gap-8">
+                                <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg text-center">
+                                <img src="C:\Users\shiva\Pictures\Camera Roll\WhatsApp Image 2024-09-19 at 16.39.58_dbe32c63.jpg" alt="T.PhaniKumar" class="w-24 h-24 rounded-full mx-auto mb-4 border-2 border-slate-600 object-cover">
+                                <h4 class="text-xl font-semibold mb-2 text-white">T.PhaniKumar</h4>
+                                <p class="text-sm text-cyan-400 mb-2">Lead Developer</p>
+                                <p class="text-slate-400 text-sm">Engineered the core AI logic and database architecture, ensuring a scalable and efficient resume generation process.</p>
+                            </div>
+                                <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg text-center">
+                                <img src="C:\Users\shiva\Pictures\Saved Pictures\WhatsApp Image 2025-11-13 at 17.55.34_97ea2897.jpg" alt="C.Sagar" class="w-24 h-24 rounded-full mx-auto mb-4 border-2 border-slate-600 object-cover">
+                                <h4 class="text-xl font-semibold mb-2 text-white">CH.Sagar</h4>
+                                <p class="text-sm text-cyan-400 mb-2">UI/UX Designer</p>
+                                <p class="text-slate-400 text-sm">Designed the intuitive user interface and responsive layout, focusing on a seamless and engaging user experience.</p>
+                            </div>
+                                <div class="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-lg text-center">
+                                <img src="C:\Users\shiva\Pictures\Saved Pictures\WhatsApp Image 2025-11-14 at 10.56.33_3567411f.jpg" alt="C.koushik" class="w-24 h-24 rounded-full mx-auto mb-4 border-2 border-slate-600 object-cover">
+                                <h4 class="text-xl font-semibold mb-2 text-white">CH.koushik</h4>
+                                <p class="text-sm text-cyan-400 mb-2">QA & Project Lead</p>
+                                <p class="text-slate-400 text-sm">Managed the project lifecycle and led quality assurance, ensuring all features are polished and bug-free.</p>
+                            </div>
+                        </div>
+                    </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div class="bg-slate-800 border border-slate-700 rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <button id="close-feedback-btn" class="absolute top-3 right-3 text-slate-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="text-2xl font-bold text-center text-white mb-2">How was your experience?</h3>
+            <p class="text-slate-400 text-center mb-6">Your feedback helps us improve.</p>
+            <div id="feedback-stars" class="flex justify-center text-4xl text-slate-500 mb-6 space-x-2">
+                <span class="feedback-star" data-value="1">★</span>
+                <span class="feedback-star" data-value="2">★</span>
+                <span class="feedback-star" data-value="3">★</span>
+                <span class="feedback-star" data-value="4">★</span>
+                <span class="feedback-star" data-value="5">★</span>
+            </div>
+            <textarea id="feedback-comment" class="form-input w-full h-28 p-3 rounded-lg mb-4" placeholder="Tell us more about your experience... (optional)"></textarea>
+            <button id="submit-feedback-btn" class="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors">Submit Feedback</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Globals ---
+        let currentStep = 1;
+        const totalSteps = 6; // Update if steps change
+        const autosaveKeyGlobal = 'resumeFormData';
+        let isLoggedIn = false; // NEW: Login State
+
+        // --- START: NEW Helper Functions ---
+        /**
+         * Generates initials from an email string.
+         * @param {string} email - The user's email.
+         * @returns {string} - The extracted initials (e.g., "Y" or "JD").
+         */
+        function getInitials(email) {
+            if (!email) return "G"; // G for Guest
+            const parts = email.split('@')[0];
+            if (parts.includes('.')) {
+                // For "john.doe@example.com"
+                return (parts.split('.')[0][0] + (parts.split('.')[1]?.[0] || '')).toUpperCase();
+            } else if (parts.includes('-')) {
+                // For "john-doe@example.com"
+                return (parts.split('-')[0][0] + (parts.split('-')[1]?.[0] || '')).toUpperCase();
+            }
+            // For "johndoe@example.com"
+            return parts[0].toUpperCase();
+        }
+
+        /**
+         * Closes the profile dropdown.
+         */
+        function closeProfileDropdown() {
+            const dropdown = document.getElementById('profile-dropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+        // --- END: NEW Helper Functions ---
+
+
+        // --- Dynamic Section Templates (Defined early) ---
+        const calendarIcon = `<i class="fa fa-calendar input-icon"></i>`;
+        const experienceTemplate = `<div data-dynamic-entry="experience" class="experience-entry space-y-4 p-4 border border-slate-700 rounded-md mt-4 relative"><button type="button" class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">✖</button><input type="text" name="jobTitle" placeholder="Job Title" class="p-3 rounded w-full form-input"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="text" name="company" placeholder="Company" class="p-3 rounded w-full form-input"><input type="text" name="location" placeholder="Location (e.g., City, Country)" class="p-3 rounded w-full form-input"></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="relative"><label class="block text-xs text-slate-400 mb-1">Start Date</label><input type="date" name="startDate" class="p-3 rounded w-full form-input"></div><div class="relative"><label class="block text-xs text-slate-400 mb-1">End Date</label><input type="date" name="endDate" class="p-3 rounded w-full form-input"></div></div><textarea name="jobDesc" placeholder="Describe your responsibilities and achievements..." class="p-3 rounded w-full h-32 form-input"></textarea></div>`;
+        const educationTemplate = `<div data-dynamic-entry="education" class="education-entry space-y-4 p-4 border border-slate-700 rounded-md mt-4 relative"><button type="button" class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">✖</button><input type="text" name="degree" placeholder="Degree (e.g., B.S. in Computer Science)" class="p-3 rounded w-full form-input"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="text" name="school" placeholder="University/School" class="p-3 rounded w-full form-input"><input type="text" name="schoolLocation" placeholder="Location (e.g., City, Country)" class="p-3 rounded w-full form-input"></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><div class="relative input-with-icon"><input type="text" name="startYear" placeholder="Start Year" class="p-3 rounded w-full form-input">${calendarIcon}</div><div class="relative input-with-icon"><input type="text" name="endYear" placeholder="End Year" class="p-3 rounded w-full form-input">${calendarIcon}</div></div></div>`;
+        const projectTemplate = `<div data-dynamic-entry="project" class="project-entry space-y-4 p-4 border border-slate-700 rounded-md mt-4 relative"><button type="button" class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">✖</button><input type="text" name="projectTitle" placeholder="Project Title" class="p-3 rounded w-full form-input"><input type="url" name="projectLink" placeholder="Project Link (Optional)" class="p-3 rounded w-full form-input"><textarea name="projectDesc" placeholder="Describe your project, your role, and the outcome..." class="p-3 rounded w-full h-24 form-input"></textarea></div>`;
+        const skillTemplate = `<div data-dynamic-entry="skill" class="skill-entry grid grid-cols-3 gap-4 items-center mt-2 relative"><button type="button" class="remove-btn absolute -top-1 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">✖</button><input type="text" name="skillName" placeholder="Skill (e.g., Python)" class="p-2 rounded w-full form-input col-span-2"><select name="skillLevel" class="p-2 rounded w-full form-input"><option>Expert</option><option selected>Intermediate</option><option>Beginner</option></select></div>`;
+        const languageTemplate = `<div data-dynamic-entry="language" class="language-entry grid grid-cols-3 gap-4 items-center mt-2 relative"><button type="button" class="remove-btn absolute -top-1 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">✖</button><input type="text" name="languageName" placeholder="Language (e.g., English)" class="p-2 rounded w-full form-input col-span-2"><select name="languageLevel" class="p-2 rounded w-full form-input"><option>Native</option><option selected>Fluent</option><option>Intermediate</option><option>Basic</option></select></div>`;
+        const awardTemplate = `<div data-dynamic-entry="award" class="award-entry grid grid-cols-3 gap-4 items-center mt-2 relative"><button type="button" class="remove-btn absolute -top-1 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">✖</button><input type="text" name="awardTitle" placeholder="Award Title" class="p-2 rounded w-full form-input col-span-2"><div class="relative input-with-icon"><input type="text" name="awardYear" placeholder="Year" class="p-2 rounded w-full form-input">${calendarIcon}</div></div>`;
+        const volunteerTemplate = `<div data-dynamic-entry="volunteer" class="volunteer-entry space-y-4 p-4 border border-slate-700 rounded-md mt-4 relative"><button type="button" class="remove-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">✖</button><input type="text" name="volunteerRole" placeholder="Role (e.g., Event Coordinator)" class="p-3 rounded w-full form-input"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><input type="text" name="volunteerOrg" placeholder="Organization" class="p-3 rounded w-full form-input"><div class="relative"><label class="block text-xs text-slate-400 mb-1">Date</label><input type="date" name="volunteerDate" class="p-3 rounded w-full form-input"></div></div><textarea name="volunteerDesc" placeholder="Describe your responsibilities and impact..." class="p-3 rounded w-full h-24 form-input"></textarea></div>`;
+
+        // --- PAGE NAVIGATION ---
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+                if(pageId === 'details') {
+                    // Don't reset to step 1, let user continue where they left off
+                    // currentStep = 1;
+                    showStep(currentStep);
+                }
+                // Update profile welcome message when showing profile
+                if (pageId === 'profile') {
+                    const welcomeMsg = document.getElementById('profile-welcome');
+                    if (welcomeMsg) {
+                        welcomeMsg.textContent = `Welcome, ${sessionStorage.getItem('userEmail') || 'User'}!`;
+                    }
+                }
+            } else {
+                console.error("Target page not found:", pageId);
+                const homePage = document.getElementById('home');
+                if (homePage) homePage.classList.add('active'); // Fallback to home
+                pageId = 'home';
+            }
+
+            document.querySelectorAll('header .nav-link').forEach(link => {
+                link.classList.remove('active');
+                 if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(`showPage('${pageId}')`)) {
+                     link.classList.add('active');
+                 }
+            });
+             if(pageId === 'home') {
+                 const homeLink = document.querySelector('header .nav-link[onclick*="showPage(\'home\')"]');
+                 if (homeLink) homeLink.classList.add('active');
+             }
+
+            window.scrollTo(0, 0);
+        }
+
+        // --- MOBILE MENU LOGIC ---
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileMenuBtn = document.getElementById('mobile-menu-button');
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function() {
+                if (mobileMenu) {
+                    mobileMenu.classList.toggle('hidden');
+                }
+            });
+        }
+        function closeMobileMenu() {
+            if (mobileMenu) mobileMenu.classList.add('hidden');
+        }
+        
+        // --- AUTH LOGIC ---
+        
+        /**
+         * Handles clicks on "Get Started" or "Create" buttons.
+         * Directs to 'details' if logged in, or 'login' if not.
+         */
+        function ctaButtonClick() {
+            if (isLoggedIn) {
+                showPage('details');
+            } else {
+                showPage('login');
+            }
+        }
+
+        /**
+         * Simulates a user login.
+         * @param {string} email - The user's email.
+         */
+        function login(email) {
+            isLoggedIn = true;
+            sessionStorage.setItem('userEmail', email); // Use sessionStorage for session-only persistence
+            updateNavUI();
+            showPage('profile');
+        }
+
+        /**
+         * Simulates a user logout.
+         */
+        function logout() {
+            isLoggedIn = false;
+            sessionStorage.removeItem('userEmail');
+            updateNavUI();
+            showPage('home');
+        }
+
+        /**
+         * START: MODIFIED Nav UI Function
+         * Updates the navigation bar UI based on login state.
+         */
+        function updateNavUI() {
+            const getStartedBtn = document.getElementById('get-started-btn');
+            
+            // New Profile Elements
+            const profileIconBtn = document.getElementById('profile-icon-btn');
+            const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+
+            // Dropdown Info Elements
+            const profileInitials = document.getElementById('profile-initials');
+            const dropdownUserName = document.getElementById('dropdown-user-name');
+            const dropdownUserEmail = document.getElementById('dropdown-user-email');
+
+            if (isLoggedIn) {
+                if (getStartedBtn) getStartedBtn.classList.add('hidden');
+                
+                // Show profile icon and mobile logout
+                if (profileIconBtn) profileIconBtn.classList.remove('hidden');
+                if (mobileLogoutBtn) mobileLogoutBtn.classList.remove('hidden');
+
+                // Update profile info
+                const email = sessionStorage.getItem('userEmail');
+                if (email) {
+                    const initials = getInitials(email);
+                    // Capitalize first letter of name part
+                    const name = email.split('@')[0].replace(/[\.-]/g, ' ');
+                    const capitalizedName = name.split(' ').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+
+                    if (profileInitials) profileInitials.textContent = initials;
+                    if (dropdownUserName) dropdownUserName.textContent = capitalizedName;
+                    if (dropdownUserEmail) dropdownUserEmail.textContent = email;
+                }
+
+            } else {
+                if (getStartedBtn) getStartedBtn.classList.remove('hidden');
+                
+                // Hide profile icon and mobile logout
+                if (profileIconBtn) profileIconBtn.classList.add('hidden');
+                if (mobileLogoutBtn) mobileLogoutBtn.classList.add('hidden');
+                
+                // Ensure dropdown is closed on logout
+                closeProfileDropdown();
+            }
+        }
+        /**
+         * END: MODIFIED Nav UI Function
+         */
+
+
+        /**
+         * Checks session storage on page load to maintain login state.
+         */
+        function checkLoginState() {
+            const storedEmail = sessionStorage.getItem('userEmail');
+            if (storedEmail) {
+                isLoggedIn = true;
+                updateNavUI();
+            } else {
+                isLoggedIn = false;
+                updateNavUI();
+            }
+        }
+        
+        // --- Multi-Step Form Logic ---
+        const steps = document.querySelectorAll('.form-step');
+        const prevBtn = document.getElementById('prev-step-btn');
+        const nextBtn = document.getElementById('next-step-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const currentStepDisplay = document.getElementById('current-step-display');
+        const totalStepsDisplay = document.getElementById('total-steps-display');
+
+        function showStep(stepNum) {
+            steps.forEach(step => step.classList.remove('active'));
+            const activeStep = document.getElementById(`step-${stepNum}`);
+            if(activeStep) activeStep.classList.add('active');
+            if(prevBtn) prevBtn.disabled = stepNum === 1;
+            if(nextBtn) nextBtn.classList.toggle('hidden', stepNum === totalSteps);
+            if(finishBtn) finishBtn.classList.toggle('hidden', stepNum !== totalSteps);
+            const progress = ((stepNum - 1) / (totalSteps -1)) * 100;
+            if(progressBar) progressBar.style.width = `${progress}%`;
+            if(progressPercentage) progressPercentage.textContent = `${Math.round(progress)}% Complete`;
+            if(currentStepDisplay) currentStepDisplay.textContent = stepNum;
+            if(totalStepsDisplay) totalStepsDisplay.textContent = totalSteps;
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                showStep(currentStep);
+                window.scrollTo(0, 0);
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                showStep(currentStep);
+                 window.scrollTo(0, 0);
+            }
+        }
+
+        // --- Autosave & Load ---
+        const form = document.getElementById('resume-form');
+
+        function saveFormData() {
+            if (!form) return; // Add check if form exists
+            const formData = {};
+            form.querySelectorAll('.form-step input, .form-step textarea, .form-step select').forEach(input => {
+                if (input.id && !input.closest('[data-dynamic-entry]')) {
+                    formData[input.id] = input.value;
+                }
+            });
+             ['experience', 'education', 'project', 'skill', 'language', 'award', 'volunteer'].forEach(section => {
+                formData[section] = [];
+                document.querySelectorAll(`#${section}-container [data-dynamic-entry="${section}"]`).forEach(entry => {
+                    const entryData = {};
+                    entry.querySelectorAll('input, textarea, select').forEach(input => {
+                        if (input.name) {
+                            entryData[input.name] = input.value;
+                        }
+                    });
+                     if (Object.values(entryData).some(val => val && val.trim() !== '')) {
+                         formData[section].push(entryData);
+                     }
+                });
+            });
+
+            // START: Save Photo
+            const photoPreview = document.getElementById('photo-preview');
+            if (photoPreview && photoPreview.src && !photoPreview.src.includes('placehold.co')) {
+                formData['photoSrc'] = photoPreview.src;
+            } else {
+                formData['photoSrc'] = ''; // Clear it if it's the placeholder
+            }
+            // END: Save Photo
+
+            localStorage.setItem(autosaveKeyGlobal, JSON.stringify(formData));
+            updateLivePreview();
+        }
+
+        function addInitialEmptyEntries() {
+            // Check if containers exist before adding
+             const expContainer = document.getElementById('experience-container');
+             if (expContainer && typeof experienceTemplate !== 'undefined' && !expContainer.querySelector('[data-dynamic-entry="experience"]')) addSection('experience-container', experienceTemplate, 'experience');
+             
+             const eduContainer = document.getElementById('education-container');
+             if (eduContainer && typeof educationTemplate !== 'undefined' && !eduContainer.querySelector('[data-dynamic-entry="education"]')) addSection('education-container', educationTemplate, 'education');
+             
+             const projContainer = document.getElementById('projects-container');
+             if (projContainer && typeof projectTemplate !== 'undefined' && !projContainer.querySelector('[data-dynamic-entry="project"]')) addSection('projects-container', projectTemplate, 'project');
+             
+             const skillContainer = document.getElementById('skills-container');
+             if (skillContainer && typeof skillTemplate !== 'undefined' && !skillContainer.querySelector('[data-dynamic-entry="skill"]')) addSection('skills-container', skillTemplate, 'skill');
+             
+             const langContainer = document.getElementById('languages-container');
+             if (langContainer && typeof languageTemplate !== 'undefined' && !langContainer.querySelector('[data-dynamic-entry="language"]')) addSection('languages-container', languageTemplate, 'language');
+             
+             const awardContainer = document.getElementById('awards-container');
+             if (awardContainer && typeof awardTemplate !== 'undefined' && !awardContainer.querySelector('[data-dynamic-entry="award"]')) addSection('awards-container', awardTemplate, 'award');
+             
+             const volContainer = document.getElementById('volunteer-container');
+             if (volContainer && typeof volunteerTemplate !== 'undefined' && !volContainer.querySelector('[data-dynamic-entry="volunteer"]')) addSection('volunteer-container', volunteerTemplate, 'volunteer');
+        }
+
+        function loadFormData() {
+             const savedData = localStorage.getItem(autosaveKeyGlobal);
+             if (savedData) {
+                 console.log("Loading saved form data...");
+                 try {
+                     const formData = JSON.parse(savedData);
+                     Object.keys(formData).forEach(key => {
+                         // START: Load Photo
+                         if (key === 'photoSrc') {
+                             const photoPreview = document.getElementById('photo-preview');
+                             if (photoPreview) {
+                                 if (formData[key]) {
+                                     photoPreview.src = formData[key];
+                                 } else {
+                                     photoPreview.src = 'https://placehold.co/150x150/e2e8f0/334155?text=Upload+Photo'; // Reset to placeholder
+                                 }
+                             }
+                         }
+                         // END: Load Photo
+                         else if (!Array.isArray(formData[key])) { // Note the 'else if'
+                             const input = document.getElementById(key);
+                             if (input) input.value = formData[key];
+                         }
+                     });
+                     ['experience', 'education', 'project', 'skill', 'language', 'award', 'volunteer'].forEach(section => {
+                         const container = document.getElementById(`${section}-container`);
+                         if (container) {
+                             container.innerHTML = '';
+                             if (formData[section] && formData[section].length > 0) {
+                                 formData[section].forEach(entryData => {
+                                     let template = '';
+                                     if (typeof experienceTemplate === 'undefined') { console.error("Templates not defined yet!"); return; }
+                                     switch(section) {
+                                         case 'experience': template = experienceTemplate; break;
+                                         case 'education': template = educationTemplate; break;
+                                         case 'project': template = projectTemplate; break;
+                                         case 'skill': template = skillTemplate; break;
+                                         case 'language': template = languageTemplate; break;
+                                         case 'award': template = awardTemplate; break;
+                                         case 'volunteer': template = volunteerTemplate; break;
+                                     }
+                                     addSection(container.id, template, section);
+                                     const newEntryDiv = container.lastElementChild;
+                                     if (newEntryDiv) {
+                                         Object.keys(entryData).forEach(fieldName => {
+                                             const input = newEntryDiv.querySelector(`[name="${fieldName}"]`);
+                                             if (input) input.value = entryData[fieldName];
+                                         });
+                                     }
+                                 });
+                             }
+                         } else {
+                             console.warn(`Container not found during load: ${section}-container`);
+                         }
+                     });
+                     addInitialEmptyEntries();
+                     updateLivePreview();
+                 } catch(e) {
+                      console.error("Error parsing saved data:", e);
+                     localStorage.removeItem(autosaveKeyGlobal);
+                     addInitialEmptyEntries();
+                 }
+             } else {
+                 console.log("No saved data found.");
+                 addInitialEmptyEntries();
+             }
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        const debouncedSave = debounce(saveFormData, 500);
+        if(form) form.addEventListener('input', debouncedSave);
+
+        // --- Add/Remove Sections Logic ---
+         function setupDynamicSections() {
+             const addExpBtn = document.getElementById('add-experience-btn');
+             if (addExpBtn) addExpBtn.addEventListener('click', () => addSection('experience-container', experienceTemplate, 'experience'));
+             const addEduBtn = document.getElementById('add-education-btn');
+             if (addEduBtn) addEduBtn.addEventListener('click', () => addSection('education-container', educationTemplate, 'education'));
+             const addProjBtn = document.getElementById('add-project-btn');
+             if (addProjBtn) addProjBtn.addEventListener('click', () => addSection('projects-container', projectTemplate, 'project'));
+             const addSkillBtn = document.getElementById('add-skill-btn');
+             if (addSkillBtn) addSkillBtn.addEventListener('click', () => addSection('skills-container', skillTemplate, 'skill'));
+             const addLangBtn = document.getElementById('add-language-btn');
+             if (addLangBtn) addLangBtn.addEventListener('click', () => addSection('languages-container', languageTemplate, 'language'));
+             const addAwardBtn = document.getElementById('add-award-btn');
+             if (addAwardBtn) addAwardBtn.addEventListener('click', () => addSection('awards-container', awardTemplate, 'award'));
+             const addVolBtn = document.getElementById('add-volunteer-btn');
+             if (addVolBtn) addVolBtn.addEventListener('click', () => addSection('volunteer-container', volunteerTemplate, 'volunteer'));
+
+             const detailsPage = document.getElementById('details');
+             if(detailsPage) {
+                 detailsPage.addEventListener('click', function(e) {
+                     // Check if the clicked element or its parent is the remove button
+                     const removeButton = e.target.closest('.remove-btn');
+                     if (removeButton) {
+                         const entryToRemove = removeButton.closest('[data-dynamic-entry]');
+                         if(entryToRemove) {
+                             entryToRemove.remove();
+                             saveFormData();
+                         }
+                     }
+                 });
+             }
+         }
+
+        function addSection(containerId, template, sectionName) {
+            const container = document.getElementById(containerId);
+            if(container) {
+                container.insertAdjacentHTML('beforeend', template);
+            } else {
+                console.error("Container not found:", containerId);
+            }
+        }
+
+        // --- FAQ Accordion Logic ---
+        const faqContainer = document.getElementById('faq-container');
+        if (faqContainer) {
+            faqContainer.addEventListener('click', (e) => {
+                const question = e.target.closest('.faq-question'); if (!question) return;
+                const answer = question.nextElementSibling; const icon = question.querySelector('svg');
+                if (!answer || !icon) return; // Safety check
+                const isActive = question.parentElement.classList.contains('active');
+                
+                // Close all other active items
+                faqContainer.querySelectorAll('.bg-slate-800.active').forEach(openItem => {
+                    if (openItem !== question.parentElement) {
+                        openItem.classList.remove('active');
+                        const otherAnswer = openItem.querySelector('.faq-answer');
+                        const otherIcon = openItem.querySelector('.faq-question svg');
+                        if (otherAnswer) {
+                            otherAnswer.style.maxHeight = '0';
+                            otherAnswer.style.paddingTop = '0';
+                            otherAnswer.style.paddingBottom = '0';
+                        }
+                        if (otherIcon) otherIcon.style.transform = 'rotate(0deg)';
+                    }
+                });
+                
+                // Toggle the clicked item
+                question.parentElement.classList.toggle('active', !isActive);
+                if (!isActive) {
+                    answer.style.maxHeight = answer.scrollHeight + 'px';
+                    answer.style.paddingTop = '1rem'; // Using 1rem to match pb-4
+                    answer.style.paddingBottom = '1rem';
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    answer.style.maxHeight = '0';
+                    answer.style.paddingTop = '0';
+                    answer.style.paddingBottom = '0';
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+        }
+
+        // --- AI Summary Generation ---
+        function generateAISummary() {
+             const jobTitleElement = document.querySelector('#experience-container [name="jobTitle"]');
+             const jobTitle = jobTitleElement ? jobTitleElement.value : "professional";
+             const skills = Array.from(document.querySelectorAll('#skills-container [name="skillName"]')).map(input => input.value).filter(s => s);
+             const summaryTextArea = document.getElementById('summary');
+             if (!summaryTextArea) return;
+             if (!jobTitleElement || !jobTitleElement.value || skills.length === 0) {
+                 summaryTextArea.value = "Please fill in your recent 'Job Title' (Step 3) and add some 'Skills' (Step 5) to generate a summary.";
+                 return;
+             }
+             const summaryText = `Results-driven ${jobTitle} with a proven track record. Adept in ${skills.slice(0, 3).join(', ')}, with a strong ability to tackle complex challenges. Seeking to leverage expertise in ${skills[0]} to contribute effectively.`;
+             summaryTextArea.value = summaryText;
+             saveFormData();
+        }
+
+         // --- Live Mini-Preview Update ---
+         const miniPreviewContainer = document.getElementById('mini-preview');
+         function updateLivePreview() {
+             if (!miniPreviewContainer) return;
+             const fullName = document.getElementById('fullName')?.value || "Your Name";
+             const email = document.getElementById('email')?.value || "Email";
+             const phone = document.getElementById('phone')?.value || "Phone";
+             const summary = document.getElementById('summary')?.value || "Professional summary...";
+             const jobTitle = document.querySelector('#experience-container [name="jobTitle"]')?.value || "Recent Job Title";
+             const company = document.querySelector('#experience-container [name="company"]')?.value || "Company";
+             const degree = document.querySelector('#education-container [name="degree"]')?.value || "Degree";
+             const school = document.querySelector('#education-container [name="school"]')?.value || "University";
+             const skills = Array.from(document.querySelectorAll('#skills-container [name="skillName"]')).map(input => input.value).filter(s => s).join(', ') || "Key Skills";
+             miniPreviewContainer.innerHTML = `
+                 <h3 class="font-bold text-center">${sanitizeHTML(fullName)}</h3>
+                 <p class="text-xs text-center text-slate-600">${sanitizeHTML(email)} | ${sanitizeHTML(phone)}</p>
+                 <h4 class="font-semibold mt-2 border-t pt-1">Summary</h4>
+                 <p class="text-xs text-slate-700">${sanitizeHTML(summary.substring(0, 100))}${summary.length > 100 ? '...' : ''}</p>
+                 <h4 class="font-semibold mt-2 border-t pt-1">Experience</h4>
+                 <p class="text-xs text-slate-700">${sanitizeHTML(jobTitle)} at ${sanitizeHTML(company)}</p>
+                 <h4 class="font-semibold mt-2 border-t pt-1">Education</h4>
+                 <p class="text-xs text-slate-700">${sanitizeHTML(degree)}, ${sanitizeHTML(school)}</p>
+                 <h4 class="font-semibold mt-2 border-t pt-1">Skills</h4>
+                 <p class="text-xs text-slate-700">${sanitizeHTML(skills)}</p>
+             `;
+         }
+        
+         // Helper function for sanitization
+         function sanitizeHTML(str) {
+             if (!str) return '';
+             const temp = document.createElement('div');
+             temp.textContent = str;
+            return temp.innerHTML;
+         }
+
+
+        // --- Resume Generation (Full Preview) ---
+        function generateResume() {
+             function formatDate(dateString) {
+                 if (!dateString) return '';
+                 try {
+                     // Try parsing as yyyy-mm-dd
+                     const parts = dateString.split('-');
+                     if (parts.length === 3) {
+                         const date = new Date(parts[0], parts[1] - 1, parts[2]);
+                          if (!isNaN(date.getTime())) {
+                             const options = { year: 'numeric', month: 'short' };
+                             return date.toLocaleDateString('en-US', options);
+                         }
+                     }
+                     return dateString; // Fallback for non-date strings (like 'Present') or other formats
+                 } catch(e) {
+                     console.error("Date formatting error:", e, dateString);
+                     return dateString;
+                 }
+             }
+             const fullName = document.getElementById('fullName')?.value || "Your Name";
+             const email = document.getElementById('email')?.value || "your.email@example.com";
+             const phone = document.getElementById('phone')?.value || "555-123-4567";
+             const address = document.getElementById('address')?.value || "City, Country";
+             const linkedin = document.getElementById('linkedin')?.value;
+             const github = document.getElementById('github')?.value;
+             const instagram = document.getElementById('instagram')?.value;
+
+             // START: Get Photo
+             const photoPreview = document.getElementById('photo-preview');
+             let photoSrc = '';
+             if (photoPreview && photoPreview.src && !photoPreview.src.includes('placehold.co')) {
+                 photoSrc = photoPreview.src;
+             }
+             const photoHtml = photoSrc ? `<img src="${photoSrc}" alt="Profile Photo" class="w-24 h-24 rounded-full mr-6 object-cover">` : '';
+             // END: Get Photo
+
+             let contactInfo = `${sanitizeHTML(email)} &bull; ${sanitizeHTML(phone)} &bull; ${sanitizeHTML(address)}`;
+             if (linkedin) contactInfo += ` &bull; <a href="${sanitizeHTML(linkedin)}" target="_blank" class="text-cyan-600 hover:underline">LinkedIn</a>`;
+             if (github) contactInfo += ` &bull; <a href="${sanitizeHTML(github)}" target="_blank" class="text-cyan-600 hover:underline">GitHub</a>`;
+             if (instagram) contactInfo += ` &bull; <a href="${sanitizeHTML(instagram)}" target="_blank" class="text-cyan-600 hover:underline">Instagram</a>`;
+
+             const summary = document.getElementById('summary')?.value || "";
+
+             const experiencesHtml = Array.from(document.querySelectorAll('#experience-container [data-dynamic-entry="experience"]')).map(entry => {
+                 const jobTitle = sanitizeHTML(entry.querySelector('[name="jobTitle"]')?.value);
+                 if (!jobTitle) return '';
+                 const startDate = formatDate(entry.querySelector('[name="startDate"]')?.value) || 'Start Date';
+                 const endDateValue = entry.querySelector('[name="endDate"]')?.value;
+                 const endDate = (!endDateValue || new Date(endDateValue) > new Date()) ? 'Present' : formatDate(endDateValue);
+                 const company = sanitizeHTML(entry.querySelector('[name="company"]')?.value);
+                 const location = sanitizeHTML(entry.querySelector('[name="location"]')?.value);
+                 const jobDesc = sanitizeHTML(entry.querySelector('[name="jobDesc"]')?.value).replace(/\n/g, '<br>');
+                 return `<div class="mb-4"><h3 class="text-lg font-semibold text-slate-700">${jobTitle}</h3><p class="text-md text-slate-600 font-medium">${company} | ${location}</p><p class="text-xs text-slate-500 uppercase">${startDate} - ${endDate}</p><p class="mt-1 text-slate-600 text-sm">${jobDesc}</p></div>`;
+             }).join('');
+
+             const educationsHtml = Array.from(document.querySelectorAll('#education-container [data-dynamic-entry="education"]')).map(entry => {
+                 const degree = sanitizeHTML(entry.querySelector('[name="degree"]')?.value);
+                 if (!degree) return '';
+                 const school = sanitizeHTML(entry.querySelector('[name="school"]')?.value);
+                 const schoolLocation = sanitizeHTML(entry.querySelector('[name="schoolLocation"]')?.value);
+                 const startYear = sanitizeHTML(entry.querySelector('[name="startYear"]')?.value);
+                 const endYear = sanitizeHTML(entry.querySelector('[name="endYear"]')?.value);
+                 return `<div class="mb-2"><h3 class="text-lg font-semibold text-slate-700">${degree}</h3><p class="text-md text-slate-600 font-medium">${school}, ${schoolLocation}</p><p class="text-sm text-slate-500">${startYear} - ${endYear}</p></div>`;
+             }).join('');
+
+             const projectsHtml = Array.from(document.querySelectorAll('#projects-container [data-dynamic-entry="project"]')).map(entry => {
+                 const projectTitle = sanitizeHTML(entry.querySelector('[name="projectTitle"]')?.value);
+                 if (!projectTitle) return '';
+                 const projectLink = sanitizeHTML(entry.querySelector('[name="projectLink"]')?.value);
+                 const projectDesc = sanitizeHTML(entry.querySelector('[name="projectDesc"]')?.value).replace(/\n/g, '<br>');
+                 const linkHtml = (projectLink && (projectLink.startsWith('http://') || projectLink.startsWith('https://')))
+                                  ? ` <a href="${projectLink}" target="_blank" class="text-cyan-600 hover:underline text-sm">(link)</a>`
+                                  : '';
+                 return `<div class="mb-4"><h3 class="text-lg font-semibold text-slate-700">${projectTitle}${linkHtml}</h3><p class="mt-1 text-slate-600 text-sm">${projectDesc}</p></div>`;
+             }).join('');
+
+             const skillsHtml = Array.from(document.querySelectorAll('#skills-container [data-dynamic-entry="skill"]')).map(entry => {
+                 const name = sanitizeHTML(entry.querySelector('[name="skillName"]')?.value);
+                 if (!name) return '';
+                 const level = sanitizeHTML(entry.querySelector('[name="skillLevel"]')?.value);
+                 return `<div class="mb-2"><p class="text-sm font-semibold text-slate-700">${name} <span class="text-xs text-slate-500">(${level})</span></p></div>`;
+             }).join('');
+
+             const languagesHtml = Array.from(document.querySelectorAll('#languages-container [data-dynamic-entry="language"]')).map(entry => {
+                 const name = sanitizeHTML(entry.querySelector('[name="languageName"]')?.value);
+                 if (!name) return '';
+                 const level = sanitizeHTML(entry.querySelector('[name="languageLevel"]')?.value);
+                 return `<div class="mb-2"><p class="text-sm text-slate-700">${name} - <span class="font-normal">${level}</span></p></div>`;
+             }).join('');
+
+             const awardsHtml = Array.from(document.querySelectorAll('#awards-container [data-dynamic-entry="award"]')).map(entry => {
+                  const name = sanitizeHTML(entry.querySelector('[name="awardTitle"]')?.value);
+                 if (!name) return '';
+                 const year = sanitizeHTML(entry.querySelector('[name="awardYear"]')?.value);
+                 return `<li class="text-sm text-slate-600">${name} ${year ? `(${year})` : ''}</li>`;
+             }).join('');
+
+             const volunteerHtml = Array.from(document.querySelectorAll('#volunteer-container [data-dynamic-entry="volunteer"]')).map(entry => {
+                 const role = sanitizeHTML(entry.querySelector('[name="volunteerRole"]')?.value);
+                 if (!role) return '';
+                 const volunteerDate = formatDate(entry.querySelector('[name="volunteerDate"]')?.value) || 'Date';
+                 const volunteerOrg = sanitizeHTML(entry.querySelector('[name="volunteerOrg"]')?.value);
+                 const volunteerDesc = sanitizeHTML(entry.querySelector('[name="volunteerDesc"]')?.value).replace(/\n/g, '<br>');
+                 return `<div class="mb-4"><h3 class="text-lg font-semibold text-slate-700">${role}</h3><p class="text-md text-slate-600 font-medium">${volunteerOrg} | ${volunteerDate}</p><p class="mt-1 text-slate-600 text-sm">${volunteerDesc}</p></div>`;
+             }).join('');
+
+             const previewContainer = document.getElementById('resume-preview');
+             if (!previewContainer) return;
+             const resumeContent = `
+                 <div class="resume-header flex items-center">
+                     ${photoHtml}
+                     <div class="flex-grow">
+                         <h1 class="text-4xl font-bold text-slate-800">${sanitizeHTML(fullName)}</h1>
+                         <p class="text-slate-600 mt-1">${contactInfo}</p>
+                     </div>
+                 </div>
+                 <div class="resume-body">
+                     <div class="resume-main">
+                         ${summary ? `<div class="mt-6 section-summary"><h2 class="text-lg font-bold resume-title mb-2">Professional Summary</h2><div class="section-content"><p class="text-slate-600 text-sm">${sanitizeHTML(summary)}</p></div></div>` : ''}
+                         ${experiencesHtml ? `<div class="mt-6 section-experience"><h2 class="text-lg font-bold resume-title mb-2">Experience</h2><div class="section-content">${experiencesHtml}</div></div>` : ''}
+                         ${projectsHtml ? `<div class="mt-6 section-projects"><h2 class="text-lg font-bold resume-title mb-2">Projects</h2><div class="section-content">${projectsHtml}</div></div>` : ''}
+                         ${volunteerHtml ? `<div class="mt-6 section-volunteer"><h2 class="text-lg font-bold resume-title mb-2">Volunteer Experience</h2><div class="section-content">${volunteerHtml}</div></div>` : ''}
+                     </div>
+                     <div class="resume-sidebar">
+                         ${educationsHtml ? `<div class="mt-6 section-education"><h2 class="text-lg font-bold resume-title mb-2">Education</h2><div class="section-content">${educationsHtml}</div></div>` : ''}
+                         ${skillsHtml ? `<div class="mt-6 section-skills"><h2 class="text-lg font-bold resume-title mb-2">Skills</h2><div class="section-content">${skillsHtml}</div></div>` : ''}
+                         ${languagesHtml ? `<div class="mt-6 section-languages"><h2 class="text-lg font-bold resume-title mb-2">Languages</h2><div class="section-content">${languagesHtml}</div></div>` : ''}
+                         ${awardsHtml ? `<div class="mt-6 section-awards"><h2 class="text-lg font-bold resume-title mb-2">Awards</h2><div class="section-content"><ul class="list-disc list-inside">${awardsHtml}</ul></div></div>` : ''}
+                     </div>
+                 </div>`;
+             previewContainer.innerHTML = resumeContent;
+             showPage('review');
+        }
+
+        // --- Customization ---
+        function changeTemplate(templateClass, el) {
+             const preview = document.getElementById('resume-preview');
+             if (preview) preview.className = 'bg-white p-8 ' + templateClass;
+             document.querySelectorAll('.template-thumbnail').forEach(thumb => thumb.classList.remove('active'));
+             el.classList.add('active');
+         }
+        function changeAccentColor(color) {
+             const preview = document.getElementById('resume-preview');
+              if (preview) preview.style.setProperty('--accent-color', color);
+         }
+        function changeFont(font) {
+             const preview = document.getElementById('resume-preview');
+              if (preview) preview.style.fontFamily = font;
+         }
+        function changeFontSize(value) {
+             const preview = document.getElementById('resume-preview');
+             const valueSpan = document.getElementById('font-size-value');
+              if (preview) preview.style.setProperty('--font-size-mult', value);
+              if (valueSpan) valueSpan.textContent = `${Math.round(value * 100)}%`;
+         }
+        function changeLineHeight(value) {
+             const preview = document.getElementById('resume-preview');
+             const valueSpan = document.getElementById('line-height-value');
+              if (preview) preview.style.setProperty('--line-height', value);
+              if (valueSpan) valueSpan.textContent = value;
+         }
+
+
+         // --- Import/Export Logic ---
+         function exportData() {
+             const dataToExport = localStorage.getItem(autosaveKeyGlobal);
+             if (!dataToExport) {
+                 alert("No data to export. Please fill in some details first.");
+                 return;
+             }
+             try {
+                 const parsedData = JSON.parse(dataToExport);
+                 const blob = new Blob([dataToExport], { type: 'application/json' });
+                 const url = URL.createObjectURL(blob);
+                 const a = document.createElement('a'); // <-- FIX: Create the 'a' element
+                 a.href = url; // <-- FIX: Use 'a.href' not 'Data.href'
+                 const fullName = parsedData.fullName || 'resume';
+                 a.download = `${fullName.replace(/\s+/g, '_').toLowerCase()}_data.json`;
+                 document.body.appendChild(a);
+                 a.click();
+                 document.body.removeChild(a);
+                 URL.revokeObjectURL(url);
+             } catch (e) {
+                 alert("Could not export data. Saved data might be corrupted.");
+                 console.error("Export error:", e);
+             }
+         }
+
+        function importData(event) {
+            const file = event.target.files[0];
+             if (!file) return;
+             const reader = new FileReader();
+             reader.onload = function(e) {
+                 try {
+                     const importedJson = e.target.result;
+                     const parsedData = JSON.parse(importedJson);
+                     if (typeof parsedData !== 'object' || parsedData === null) {
+                         throw new Error("Invalid JSON structure");
+                     }
+                     if (!parsedData.fullName && !parsedData.email) {
+                          console.warn("Imported JSON missing common fields, might not be compatible.");
+                     }
+
+                     // START: Reset photo on import
+                     const photoPreview = document.getElementById('photo-preview');
+                     if (photoPreview) {
+                         photoPreview.src = 'https://placehold.co/150x150/e2e8f0/334155?text=Upload+Photo';
+                     }
+                     // END: Reset photo on import
+
+                     localStorage.setItem(autosaveKeyGlobal, importedJson);
+                     loadFormData();
+                     currentStep = 1;
+                     showStep(currentStep);
+                     alert("Data imported successfully! Please review all steps.");
+                 } catch (error) {
+                     console.error("Failed to import data:", error);
+                     alert(`Error importing file: ${error.message}. Please ensure it's a valid JSON file exported from this builder.`);
+                 } finally {
+                     event.target.value = null; // Reset file input
+                 }
+             };
+             reader.onerror = function() {
+                 alert("Error reading file.");
+                 event.target.value = null; // Reset file input
+             }
+             reader.readAsText(file);
+         }
+
+
+         // --- ON LOAD INIT ---
+         document.addEventListener('DOMContentLoaded', function(){
+             // START: Photo Preview Logic
+             const photoInput = document.getElementById('photo');
+             const photoPreview = document.getElementById('photo-preview');
+             if (photoInput && photoPreview) {
+                 photoInput.addEventListener('change', function(e) {
+                     const file = e.target.files[0];
+                     if (file) {
+                         // Basic file type check
+                         if (!['image/jpeg', 'image/png'].includes(file.type)) {
+                             alert("Please upload a JPG or PNG image.");
+                             return;
+                         }
+                         // Basic file size check (e.g., 5MB)
+                         if (file.size > 5 * 1024 * 1024) {
+                             alert("File is too large. Please upload an image under 5MB.");
+                             return;
+                         }
+                         
+                         const reader = new FileReader();
+                         reader.onload = function(event) {
+                             const dataUrl = event.target.result;
+                             photoPreview.src = dataUrl;
+                             saveFormData(); // Save immediately after photo is read
+                         }
+                         reader.onerror = function() {
+                             alert("Error reading image file.");
+                         }
+                         reader.readAsDataURL(file);
+                     }
+                 });
+             }
+             // END: Photo Preview Logic
+
+             setupDynamicSections(); // Setup add/remove listeners first
+             loadFormData(); // Load saved data AFTER dynamic sections are set up AND templates defined
+
+             showPage('home'); // Always start on the home page
+             checkLoginState(); // Check login state on load
+             showStep(currentStep); // Show the correct initial step
+             
+             // Add Auth Event Listeners
+             const loginForm = document.getElementById('login-form');
+             if (loginForm) {
+                 loginForm.addEventListener('submit', (e) => {
+                     e.preventDefault();
+                     const emailInput = document.getElementById('login-email');
+                     if (emailInput && emailInput.value) {
+                         login(emailInput.value);
+                     } else {
+                         alert("Please enter an email to login.");
+                     }
+                 });
+             }
+             const logoutBtn = document.getElementById('logout-btn');
+             if(logoutBtn) {
+                 logoutBtn.addEventListener('click', logout);
+             }
+
+             // --- START: NEW Profile Dropdown Listeners ---
+             const profileIconBtn = document.getElementById('profile-icon-btn');
+             const profileDropdown = document.getElementById('profile-dropdown');
+             const dropdownLogoutBtn = document.getElementById('dropdown-logout-btn');
+             const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+
+             if (profileIconBtn && profileDropdown) {
+                 profileIconBtn.addEventListener('click', (e) => {
+                     e.stopPropagation(); // Prevent window click from firing immediately
+                     profileDropdown.classList.toggle('hidden');
+                 });
+             }
+
+             // Close dropdown when clicking logout
+             if (dropdownLogoutBtn) {
+                 dropdownLogoutBtn.addEventListener('click', () => {
+                     logout();
+                     // updateNavUI in logout() will handle closing
+                 });
+             }
+
+             // Mobile logout listener
+             if (mobileLogoutBtn) {
+                 mobileLogoutBtn.addEventListener('click', () => {
+                     logout();
+                     closeMobileMenu();
+                 });
+             }
+
+             // Close dropdown when clicking outside
+             window.addEventListener('click', (e) => {
+                 const container = document.getElementById('profile-menu-container');
+                 if (container && !container.contains(e.target)) {
+                     closeProfileDropdown();
+                 }
+             });
+             // --- END: NEW Profile Dropdown Listeners ---
+
+
+             const templateSelector = document.getElementById('template-selector');
+             if(templateSelector) {
+                 templateSelector.innerHTML = ''; // Clear existing thumbs
+                 const templateNames = ['Professional', 'Modern', 'Minimalist', 'Corporate', 'Elegant', 'Classic', 'Simple', 'Bold', 'Dark', 'Creative'];
+                 const templateDescriptions = [
+                     'Classic Centered', 'Modern Two Column', 'Clean Minimal', 'Color Header', 'Right Aligned Header',
+                     'Classic Serif', 'Simple Box Header', 'Bold Header Line', 'Dark Sidebar', 'Creative Accent Title'
+                 ];
+                 for (let i = 1; i <= 10; i++) {
+                     const thumb = document.createElement('div');
+                     const thumbText = templateDescriptions[i-1] || `Template ${i}`;
+                     thumb.innerHTML = `<img src="https://placehold.co/150x200/e2e8f0/0f172a?text=${encodeURIComponent(thumbText)}" alt="${templateNames[i-1]} Template" class="rounded-md w-full h-auto">`;
+                     thumb.className = `template-thumbnail ${i === 1 ? 'active' : ''}`;
+                     thumb.onclick = () => changeTemplate(`template-${i}`, thumb);
+                     templateSelector.appendChild(thumb);
+                 }
+             }
+
+             // --- PDF Download Logic ---
+             const downloadBtn = document.getElementById('download-btn');
+             if (downloadBtn) {
+                 downloadBtn.addEventListener('click', () => {
+                     console.log("Download button clicked"); // Debug log
+                     const element = document.getElementById('resume-preview');
+                     const fullNameInput = document.getElementById('fullName');
+                     const paperSizeSelect = document.getElementById('paper-size-selector');
+
+                     if (!element) {
+                         console.error("Resume preview element not found!");
+                         alert("Error: Resume preview not found.");
+                         return;
+                     }
+                     if (!fullNameInput) {
+                         console.error("Full name input element not found!");
+                         // Use default filename if input is missing
+                     }
+                     if (!paperSizeSelect) {
+                         console.error("Paper size selector element not found!");
+                          // Use default paper size if select is missing
+                     }
+
+                     const paperSize = paperSizeSelect ? paperSizeSelect.value : 'letter';
+                     const filename = (fullNameInput && fullNameInput.value)
+                                       ? `${fullNameInput.value.replace(/\s+/g, '_').toLowerCase()}_resume.pdf`
+                                       : 'resume.pdf';
+
+                     // --- html2pdf.js options ---
+                     const opt = {
+                         margin:       [0.5, 0.5, 0.5, 0.5], // [top, left, bottom, right] in inches
+                         filename:     filename,
+                         image:        { type: 'jpeg', quality: 0.98 },
+                         html2canvas:  { scale: 2, useCORS: true },
+                         jsPDF:        { unit: 'in', format: paperSize, orientation: 'portrait' },
+                         pagebreak:    { mode: 'avoid-all', before: '.resume-section' } // Avoid breaking sections
+                     };
+
+                     // Create a clone to modify for PDF generation
+                     const elementClone = element.cloneNode(true);
+                     
+                     // Modify clone style for optimal PDF rendering
+                     elementClone.style.maxWidth = paperSize === 'a4' ? '8.27in' : '8.5in';
+                     elementClone.style.boxShadow = 'none';
+                     
+                     // Fix for A4 vs Letter width differences (A4 is narrower)
+                     if (paperSize === 'a4') {
+                         // Scale down slightly to fit A4 width without overflow
+                         // We adjust padding, as 8.5in element on 8.27in paper overflows
+                         elementClone.style.paddingLeft = '0.5in'; // Reduce horizontal padding
+                         elementClone.style.paddingRight = '0.5in';
+                     } else {
+                         // Standard letter padding
+                         elementClone.style.padding = '0.8in'; // Default 'p-8' is ~0.8in if 1rem=16px
+                     }
+                     
+                     // Temporarily append clone off-screen to ensure styles are computed
+                     // This is sometimes needed for complex layouts
+                     elementClone.style.position = 'absolute';
+                     elementClone.style.left = '-9999px';
+                     elementClone.style.top = '0';
+                     document.body.appendChild(elementClone);
+
+                     console.log("Starting PDF generation with options:", opt);
+                     
+                     // Run PDF generation
+                     html2pdf().from(elementClone).set(opt).save().then(() => {
+                         console.log("PDF generation complete.");
+                         // Remove the clone from the DOM
+                         document.body.removeChild(elementClone);
+                         // Show feedback modal
+                         showFeedbackModal();
+                     }).catch((err) => {
+                         console.error("PDF generation failed:", err);
+                         // Remove the clone from the DOM
+                         document.body.removeChild(elementClone);
+                         alert("An error occurred while generating the PDF. Please try again.");
+                     });
+                 });
+             }
+
+             // --- AI Rating Logic ---
+             const rateButton = document.getElementById('rate-button');
+             if(rateButton) {
+                 rateButton.addEventListener('click', function() {
+                     rateButton.textContent = 'Analyzing...';
+                     rateButton.disabled = true;
+
+                     let finalScore = 0;
+                     const baseScore = 20; // Start with 20 points
+                     finalScore += baseScore;
+
+                     // 1. Check Personal Info
+                     if (document.getElementById('fullName')?.value) finalScore += 5;
+                     if (document.getElementById('email')?.value) finalScore += 5;
+                     if (document.getElementById('phone')?.value) finalScore += 5;
+                     if (document.getElementById('address')?.value) finalScore += 2;
+                     if (document.getElementById('linkedin')?.value) finalScore += 3;
+
+                     // 2. Check Summary
+                     const summary = document.getElementById('summary')?.value || "";
+                     if (summary.length > 50) finalScore += 10;
+                     else if (summary.length > 20) finalScore += 5;
+
+                     // 3. Check Experience
+                     const experiences = document.querySelectorAll('#experience-container [data-dynamic-entry="experience"]');
+                     if (experiences.length > 1) finalScore += 15;
+                     else if (experiences.length === 1 && document.querySelector('#experience-container [name="jobTitle"]')?.value) finalScore += 10;
+                     
+                     // Check for job descriptions
+                     experiences.forEach(exp => {
+                         if (exp.querySelector('[name="jobDesc"]')?.value.length > 30) finalScore += 2;
+                     });
+
+                     // 4. Check Education
+                     if (document.querySelectorAll('#education-container [data-dynamic-entry="education"]').length > 0 && document.querySelector('#education-container [name="degree"]')?.value) finalScore += 10;
+
+                     // 5. Check Skills
+                     const skills = document.querySelectorAll('#skills-container [data-dynamic-entry="skill"]');
+                     if (skills.length > 5) finalScore += 15;
+                     else if (skills.length >= 3) finalScore += 10;
+                     else if (skills.length > 0) finalScore += 5;
+
+                     // 6. Check Projects/Awards/Other
+                     if (document.querySelectorAll('#projects-container [data-dynamic-entry="project"]').length > 0 && document.querySelector('#projects-container [name="projectTitle"]')?.value) finalScore += 5;
+                     if (document.querySelectorAll('#languages-container [data-dynamic-entry="language"]').length > 0 && document.querySelector('#languages-container [name="languageName"]')?.value) finalScore += 3;
+                     
+                     // Max score approx 100
+                     finalScore = Math.min(Math.max(finalScore, 0), 99); // Cap at 99
+
+                     // Animate the score
+                     animateProgress(finalScore);
+                     
+                     setTimeout(() => {
+                         rateButton.textContent = 'Rate My Resume';
+                         rateButton.disabled = false;
+                     }, 2500); // Reset button after animation
+                 });
+             }
+             
+             // --- AI Rating Animation Function ---
+             function animateProgress(targetScore) {
+                 const progressCircle = document.getElementById('progress-circle');
+                 const progressValue = document.getElementById('progress-value');
+                 if (!progressCircle || !progressValue) return;
+
+                 let startValue = 0;
+                 let endValue = Math.round(targetScore);
+                 let speed = 20; // Lower is faster animation
+                 
+                 let progress = setInterval(() => {
+                     startValue++;
+                     
+                     progressValue.textContent = `${startValue}`;
+                     let angle = (startValue / 100) * 360;
+                     
+                     progressCircle.style.background = `conic-gradient(
+                         #22d3ee ${angle}deg,
+                         #334155 ${angle}deg
+                     )`;
+                     
+                     if (startValue == endValue) {
+                         clearInterval(progress);
+                     }
+                 }, speed);
+             }
+
+
+             // --- Feedback Modal Logic ---
+             const feedbackModal = document.getElementById('feedback-modal');
+             const closeFeedbackBtn = document.getElementById('close-feedback-btn');
+             const submitFeedbackBtn = document.getElementById('submit-feedback-btn');
+             const feedbackStarsContainer = document.getElementById('feedback-stars');
+             let currentRating = 0;
+
+             function showFeedbackModal() {
+                 if (!feedbackModal) return;
+                 // Reset modal state
+                 currentRating = 0;
+                 const commentBox = document.getElementById('feedback-comment');
+                 if(commentBox) commentBox.value = '';
+                 if(feedbackStarsContainer) {
+                    feedbackStarsContainer.querySelectorAll('.feedback-star').forEach(s => s.classList.remove('active'));
+                 }
+                 
+                 feedbackModal.classList.remove('hidden');
+                 setTimeout(() => feedbackModal.classList.remove('opacity-0'), 10); // Fade in
+             }
+
+             function hideFeedbackModal() {
+                 if (!feedbackModal) return;
+                 feedbackModal.classList.add('opacity-0');
+                 setTimeout(() => feedbackModal.classList.add('hidden'), 300); // Fade out
+             }
+             
+             if (feedbackStarsContainer) {
+                 feedbackStarsContainer.addEventListener('click', (e) => {
+                     const star = e.target.closest('.feedback-star');
+                     if (star) {
+                         currentRating = parseInt(star.dataset.value);
+                         feedbackStarsContainer.querySelectorAll('.feedback-star').forEach((s, index) => {
+                             s.classList.toggle('active', index < currentRating);
+                         });
+                     }
+                 });
+             }
+
+             if (closeFeedbackBtn) {
+                 closeFeedbackBtn.addEventListener('click', hideFeedbackModal);
+             }
+             
+             if (submitFeedbackBtn) {
+                // Re-bind submit listener
+                const submitHandler = () => {
+                    const comment = document.getElementById('feedback-comment').value;
+                    console.log("Feedback submitted:", { rating: currentRating, comment: comment });
+                    
+                    const modalContent = feedbackModal.querySelector('div');
+                    if (!modalContent) return;
+
+                    // Show a thank you message
+                    modalContent.innerHTML = `
+                        <h3 class="text-2xl font-bold text-center text-white mb-4">Thank You!</h3>
+                        <p class="text-slate-400 text-center">Your feedback has been submitted.</p>
+                    `;
+                    
+                    // Close modal after 2 seconds
+                    setTimeout(() => {
+                        hideFeedbackModal();
+                        
+                        // Restore original content for next time
+                        modalContent.innerHTML = `
+                            <button id="close-feedback-btn" class="absolute top-3 right-3 text-slate-400 hover:text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                            <h3 class="text-2xl font-bold text-center text-white mb-2">How was your experience?</h3>
+                            <p class="text-slate-400 text-center mb-6">Your feedback helps us improve.</p>
+                            <div id="feedback-stars" class="flex justify-center text-4xl text-slate-500 mb-6 space-x-2">
+                                <span class="feedback-star" data-value="1">★</span>
+                                <span class="feedback-star" data-value="2">★</span>
+                                <span class="feedback-star" data-value="3">★</span>
+                                <span class="feedback-star" data-value="4">★</span>
+                                <span class="feedback-star" data-value="5">★</span>
+                            </div>
+                            <textarea id="feedback-comment" class="form-input w-full h-28 p-3 rounded-lg mb-4" placeholder="Tell us more about your experience... (optional)"></textarea>
+                            <button id="submit-feedback-btn" class="w-full bg-cyan-500 text-slate-900 font-bold py-3 px-5 rounded-lg shadow-lg hover:bg-cyan-400 transition-colors">Submit Feedback</button>
+                        `;
+                        
+                        // Re-bind listeners (since innerHTML was replaced)
+                        document.getElementById('close-feedback-btn').addEventListener('click', hideFeedbackModal);
+                        document.getElementById('submit-feedback-btn').addEventListener('click', submitHandler); // Re-bind self
+                        document.getElementById('feedback-stars').addEventListener('click', (e) => {
+                             const star = e.target.closest('.feedback-star');
+                             if (star) {
+                                 currentRating = parseInt(star.dataset.value);
+                                 document.getElementById('feedback-stars').querySelectorAll('.feedback-star').forEach((s, index) => {
+                                     s.classList.toggle('active', index < currentRating);
+                                 });
+                             }
+                        });
+                    }, 2000);
+                };
+                
+                submitFeedbackBtn.addEventListener('click', submitHandler);
+             }
+
+         });
+    </script>
+</body>
+</html>
